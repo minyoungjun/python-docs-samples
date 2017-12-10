@@ -1,4 +1,4 @@
-#!/usr/bin/env python
+#-*- coding: utf-8 -*-
 
 # Copyright 2017 Google Inc. All Rights Reserved.
 #
@@ -30,12 +30,32 @@ from __future__ import division
 import argparse
 import re
 import sys
+import urllib
+import urllib2
+from threading import Thread
+from httplib import BadStatusLine
+
+import random
+import unicodedata
 
 from google.cloud import speech
 from google.cloud.speech import enums
 from google.cloud.speech import types
 import pyaudio
 from six.moves import queue
+
+temp = ''
+def open_website(url, ts, is_end):
+    global temp
+    print("temp" + temp)
+    if (ts != temp):
+        temp = ts + is_end
+        if is_end == 'false':
+            return urllib2.urlopen(url + urllib.urlencode({'is_end': is_end, 'q': ts}).encode('utf-8'), timeout=0.5)
+        else:
+            return urllib2.urlopen(url + urllib.urlencode({'is_end': is_end, 'q': ts}).encode('utf-8'))
+    else:
+        return True
 
 class MicrophoneStream(object):
     """Opens a recording stream as a generator yielding the audio chunks."""
@@ -143,14 +163,20 @@ def listen_print_loop(responses):
         # some extra spaces to overwrite the previous result
         overwrite_chars = ' ' * (num_chars_printed - len(transcript))
 
-        if not result.is_final:
+        if (not result.is_final) and (len(transcript.split()) < 6) :
+
+            #Thread(target=open_website, args=['http://localhost:3000/listen?', transcript.encode('utf-8'), 'false']).start()
+            print("buffer:" + transcript)
+
             sys.stdout.write(transcript + overwrite_chars + '\r')
             sys.stdout.flush()
 
             num_chars_printed = len(transcript)
 
         else:
+            Thread(target=open_website, args=['http://localhost:3000/listen?', transcript.encode('utf-8'), 'true']).start()
             print(transcript + overwrite_chars)
+            print("end line")
 
             # Exit recognition if any of the transcribed phrases could be
             # one of our keywords.
@@ -164,7 +190,7 @@ def listen_print_loop(responses):
 def main(sample_rate):
     # See http://g.co/cloud/speech/docs/languages
     # for a list of supported languages.
-    language_code = 'en-US'  # a BCP-47 language tag
+    language_code = 'ko-KR'  # a BCP-47 language tag
 
     client = speech.SpeechClient()
     config = types.RecognitionConfig(

@@ -175,55 +175,57 @@ def listen_print_loop(responses, stream):
 
 
 def main(sample_rate, audio_src):
-    # See http://g.co/cloud/speech/docs/languages
-    # for a list of supported languages.
-    language_code = 'en-US'  # a BCP-47 language tag
 
-    client = speech.SpeechClient()
-    config = types.RecognitionConfig(
-        encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
-        sample_rate_hertz=sample_rate,
-        language_code=language_code,
-        max_alternatives=1,
-        enable_word_time_offsets=True)
-    streaming_config = types.StreamingRecognitionConfig(
-        config=config,
-        interim_results=True)
+    while True:
+        # See http://g.co/cloud/speech/docs/languages
+        # for a list of supported languages.
+        language_code = 'ko-KR'  # a BCP-47 language tag
 
-    if audio_src:
-        mic_manager = SimulatedMicrophoneStream(
-                audio_src, sample_rate, int(sample_rate / 10))
-    else:
-        mic_manager = ResumableMicrophoneStream(
-                sample_rate, int(sample_rate / 10))
+        client = speech.SpeechClient()
+        config = types.RecognitionConfig(
+            encoding=enums.RecognitionConfig.AudioEncoding.LINEAR16,
+            sample_rate_hertz=sample_rate,
+            language_code=language_code,
+            max_alternatives=1,
+            enable_word_time_offsets=True)
+        streaming_config = types.StreamingRecognitionConfig(
+            config=config,
+            interim_results=True)
 
-    with mic_manager as stream:
-        resume = False
-        while True:
-            audio_generator = stream.generator(resume=resume)
-            requests = (types.StreamingRecognizeRequest(audio_content=content)
-                        for content in audio_generator)
+        if audio_src:
+            mic_manager = SimulatedMicrophoneStream(
+                    audio_src, sample_rate, int(sample_rate / 10))
+        else:
+            mic_manager = ResumableMicrophoneStream(
+                    sample_rate, int(sample_rate / 10))
 
-            responses = client.streaming_recognize(streaming_config, requests)
+        with mic_manager as stream:
+            resume = False
+            while True:
+                audio_generator = stream.generator(resume=resume)
+                requests = (types.StreamingRecognizeRequest(audio_content=content)
+                            for content in audio_generator)
 
-            try:
-                # Now, put the transcription responses to use.
-                listen_print_loop(responses, stream)
-                break
-            except grpc.RpcError, e:
-                if e.code() not in (grpc.StatusCode.INVALID_ARGUMENT,
-                                    grpc.StatusCode.OUT_OF_RANGE):
-                    raise
-                details = e.details()
-                if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
-                    if 'deadline too short' not in details:
+                responses = client.streaming_recognize(streaming_config, requests)
+
+                try:
+                    # Now, put the transcription responses to use.
+                    listen_print_loop(responses, stream)
+                    break
+                except grpc.RpcError, e:
+                    if e.code() not in (grpc.StatusCode.INVALID_ARGUMENT,
+                                        grpc.StatusCode.OUT_OF_RANGE):
                         raise
-                else:
-                    if 'maximum allowed stream duration' not in details:
-                        raise
+                    details = e.details()
+                    if e.code() == grpc.StatusCode.INVALID_ARGUMENT:
+                        if 'deadline too short' not in details:
+                            raise
+                    else:
+                        if 'maximum allowed stream duration' not in details:
+                            raise
 
-                print('Resuming..')
-                resume = True
+                    print('Resuming..')
+                    resume = True
 
 
 if __name__ == '__main__':
