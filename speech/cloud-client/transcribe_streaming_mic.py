@@ -165,7 +165,7 @@ def listen_print_loop(responses):
 
         if (not result.is_final) and (len(transcript.split()) < 6) :
 
-            #Thread(target=open_website, args=['http://localhost:3000/listen?', transcript.encode('utf-8'), 'false']).start()
+            Thread(target=open_website, args=['http://localhost:3000/listen?', transcript.encode('utf-8'), 'false']).start()
             print("buffer:" + transcript)
 
             sys.stdout.write(transcript + overwrite_chars + '\r')
